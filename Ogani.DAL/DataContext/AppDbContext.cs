@@ -14,8 +14,9 @@ public class AppDbContext:IdentityDbContext<AppUser>
     public DbSet<Product> Products { get; set; }
     public DbSet<Category> Categories { get; set; }
     public DbSet<ProductCategory> ProductCategories { get; set; }
-    public DbSet<ProductImage> ProductImages { get; set; }
+    public DbSet<ProductImage> ProductImages { get; set; } = null!;
 
+    public DbSet<BasketIem> BasketIems { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>().HasData(new Category { Name = "Food", Id = 1,ImageUrl="Salam" });

@@ -8,7 +8,7 @@ namespace Ogani.BLL.ViewModels.ProductViewModels;
 public class ProductViewModel : IViewModel
 {
     public int Id { get; set; }
-    public string? Name { get; set; }
+    public string Name { get; set; }
     public decimal Price { get; set; }
     public List<ProductImageViewModel>? ProductImages { get; set; }
     public List<CategoryViewModel>? ProductCategories { get; set; }

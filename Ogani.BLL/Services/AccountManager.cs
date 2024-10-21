@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Azure.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -25,6 +26,7 @@ public class AccountManager : IAccountService
 
     public async Task<bool> LoginAsync(LoginViewModel vm, ModelStateDictionary modelState)
     {
+
         if (_httpContextAccessor.HttpContext.User.Identity?.IsAuthenticated ?? true)
             throw new InvalidInputException("User already signed");
 
