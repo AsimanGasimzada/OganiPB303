@@ -1,6 +1,6 @@
 ﻿namespace Ogani.DAL.DataContext.Entities;
 
-public class BasketIem:BaseEntity
+public class BasketItem:BaseEntity
 {
     public int ProductId { get; set; }
     public Product Product { get; set; } = null!;

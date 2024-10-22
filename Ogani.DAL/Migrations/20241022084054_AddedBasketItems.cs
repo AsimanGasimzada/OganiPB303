@@ -11,7 +11,7 @@ namespace Ogani.DAL.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "BasketIems",
+                name: "BasketItems",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -22,15 +22,15 @@ namespace Ogani.DAL.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BasketIems", x => x.Id);
+                    table.PrimaryKey("PK_BasketItems", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_BasketIems_AspNetUsers_AppUserId",
+                        name: "FK_BasketItems_AspNetUsers_AppUserId",
                         column: x => x.AppUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_BasketIems_Products_ProductId",
+                        name: "FK_BasketItems_Products_ProductId",
                         column: x => x.ProductId,
                         principalTable: "Products",
                         principalColumn: "Id",
@@ -38,13 +38,13 @@ namespace Ogani.DAL.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_BasketIems_AppUserId",
-                table: "BasketIems",
+                name: "IX_BasketItems_AppUserId",
+                table: "BasketItems",
                 column: "AppUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_BasketIems_ProductId",
-                table: "BasketIems",
+                name: "IX_BasketItems_ProductId",
+                table: "BasketItems",
                 column: "ProductId");
         }
 
@@ -52,7 +52,7 @@ namespace Ogani.DAL.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "BasketIems");
+                name: "BasketItems");
         }
     }
 }

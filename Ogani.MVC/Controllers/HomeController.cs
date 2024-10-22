@@ -10,231 +10,173 @@ using Ogani.MVC.ViewModels;
 using System.Diagnostics;
 using System.Security.Claims;
 
-namespace Ogani.MVC.Controllers
+namespace Ogani.MVC.Controllers;
+
+public class HomeController : Controller
 {
-    public class HomeController : Controller
+
+    private readonly IHomeService _homeService;
+    private readonly IProductService _productService;
+    private readonly AppDbContext _context;
+    private const string BASKET_KEY = "OGANI_BASKET_KEY";
+    public HomeController(IHomeService homeService, IProductService productService, AppDbContext context)
     {
+        _homeService = homeService;
+        _productService = productService;
+        _context = context;
+    }
 
-        private readonly IHomeService _homeService;
-        private readonly IProductService _productService;
-        private readonly AppDbContext _context;
-        private const string BASKET_KEY = "OGANI_BASKET_KEY";
-        public HomeController(IHomeService homeService, IProductService productService, AppDbContext context)
+    public async Task<IActionResult> Index()
+    {
+        var homeViewModel = await _homeService.GetHomeViewModelAsync();
+
+        return View(homeViewModel);
+
+
+    }
+
+    public async Task<IActionResult> AddToBasket(int id, string? returnUrl)
+    {
+        var product = await _productService.GetAsync(id);
+
+        if (product is null)
+            return NotFound();
+
+        if (!User.Identity?.IsAuthenticated ?? true)
         {
-            _homeService = homeService;
-            _productService = productService;
-            _context = context;
-        }
+            List<BasketItemViewModel> basket = _getBasketFromCookie();
 
-        public async Task<IActionResult> Index()
-        {
-            var homeViewModel = await _homeService.GetHomeViewModelAsync();
+            var existItem = basket.FirstOrDefault(x => x.ProductId == id);
 
-            return View(homeViewModel);
-
-
-        }
-
-        public async Task<IActionResult> AddToBasket(int id, string? returnUrl)
-        {
-            var product = await _productService.GetAsync(id);
-
-            if (product is null)
-                return NotFound();
-
-            if (!User.Identity?.IsAuthenticated ?? true)
-            {
-                string? json = Request.Cookies[BASKET_KEY];
-
-                List<BasketItemViewModel> basket = new();
-
-                if (!string.IsNullOrEmpty(json))
-                    basket = JsonConvert.DeserializeObject<List<BasketItemViewModel>>(json!) ?? new();
-
-                var existItem = basket.FirstOrDefault(x => x.ProductId == id);
-
-                if (existItem is { })
-                    existItem.Count++;
-                else
-                {
-                    BasketItemViewModel newItem = new()
-                    {
-                        ProductId = id,
-                        Count = 1
-                    };
-
-                    basket.Add(newItem);
-                }
-
-
-                var newJson = JsonConvert.SerializeObject(basket);
-
-                Response.Cookies.Append(BASKET_KEY, newJson);
-            }
+            if (existItem is { })
+                existItem.Count++;
             else
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-
-
-                if (userId is null)
-                    return BadRequest();
-
-                var existItem = await _context.BasketIems.FirstOrDefaultAsync(x => x.ProductId == product.Id && x.AppUserId == userId);
-
-                if (existItem is not null)
+                BasketItemViewModel newItem = new()
                 {
-                    existItem.Count++;
-                    _context.Update(existItem);
-                    await _context.SaveChangesAsync();
-
-                    if (returnUrl is not null)
-                        return Redirect(returnUrl);
-
-                    return RedirectToAction(nameof(Index));
-                }
-
-                BasketIem basketItem = new()
-                {
-                    AppUserId = userId,
-                    ProductId = product.Id,
+                    ProductId = id,
                     Count = 1
                 };
 
-                await _context.BasketIems.AddAsync(basketItem);
+                basket.Add(newItem);
+            }
+            _appendBasketInCookie(basket);
+        }
+        else
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+
+
+            if (userId is null)
+                return BadRequest();
+
+            var existItem = await _context.BasketItems.FirstOrDefaultAsync(x => x.ProductId == product.Id && x.AppUserId == userId);
+
+            if (existItem is not null)
+            {
+                existItem.Count++;
+                _context.Update(existItem);
                 await _context.SaveChangesAsync();
 
+                if (returnUrl is not null)
+                    return Redirect(returnUrl);
 
+                return RedirectToAction(nameof(Index));
             }
-            if (returnUrl is not null)
-                return Redirect(returnUrl);
 
-            return RedirectToAction(nameof(Index));
+            BasketItem basketItem = new()
+            {
+                AppUserId = userId,
+                ProductId = product.Id,
+                Count = 1
+            };
+
+            await _context.BasketItems.AddAsync(basketItem);
+            await _context.SaveChangesAsync();
+
 
         }
+        if (returnUrl is not null)
+            return Redirect(returnUrl);
+
+        return RedirectToAction(nameof(Index));
+
+    }
 
 
-        public async Task<IActionResult> Decrease(int id,string? returnUrl)
+    public async Task<IActionResult> Decrease(int id, string? returnUrl)
+    {
+        var product = await _productService.GetAsync(id);
+
+        if (product is null)
+            return NotFound();
+
+        if (!User.Identity?.IsAuthenticated ?? true)
         {
-            var product = await _productService.GetAsync(id);
 
-            if (product is null)
-                return NotFound();
+            List<BasketItemViewModel> basket = _getBasketFromCookie();
 
-            if (!User.Identity?.IsAuthenticated ?? true)
-            {
-                string? json = Request.Cookies[BASKET_KEY];
+            var existItem = basket.FirstOrDefault(x => x.ProductId == id);
 
-                List<BasketItemViewModel> basket = new();
-
-                if (!string.IsNullOrEmpty(json))
-                    basket = JsonConvert.DeserializeObject<List<BasketItemViewModel>>(json!) ?? new();
-
-                var existItem = basket.FirstOrDefault(x => x.ProductId == id);
-
-                if (existItem is { })
-                    existItem.Count--;
-                else
-                {
-                    return NotFound();
-                }
-
-
-                var newJson = JsonConvert.SerializeObject(basket);
-
-                Response.Cookies.Append(BASKET_KEY, newJson);
-            }
+            if (existItem is { })
+                existItem.Count--;
             else
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                return NotFound();
+            }
 
 
+            _appendBasketInCookie(basket);
+        }
+        else
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                if (userId is null)
-                    return BadRequest();
+            if (userId is null)
+                return BadRequest();
 
-                var existItem = await _context.BasketIems.FirstOrDefaultAsync(x => x.ProductId == product.Id && x.AppUserId == userId);
+            var existItem = await _context.BasketItems.FirstOrDefaultAsync(x => x.ProductId == product.Id && x.AppUserId == userId);
 
-                if (existItem is not null)
-                {
-                    existItem.Count--;
-                    _context.Update(existItem);
-                    await _context.SaveChangesAsync();
-
-                    if (returnUrl is not null)
-                        return Redirect(returnUrl);
-
-                    return RedirectToAction(nameof(Index));
-                }
-
+            if (existItem is null)
                 return NotFound();
 
+            existItem.Count--;
+            _context.Update(existItem);
+            await _context.SaveChangesAsync();
 
-            }
-            if (returnUrl is not null)
-                return Redirect(returnUrl);
-
-            return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> ShoppingCard()
+        if (returnUrl is not null)
+            return Redirect(returnUrl);
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    public async Task<IActionResult> ShoppingCard()
+    {
+        List<GetBasketViewModel> basket = new();
+
+        if (User.Identity?.IsAuthenticated ?? false)
         {
-            List<GetBasketViewModel> basket = new();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (User.Identity?.IsAuthenticated ?? false)
+            if (userId is null)
+                return BadRequest();
+
+            var basketItemList = await _context.BasketItems.Include(x => x.Product).ThenInclude(x => x.ProductImages).Where(x => x.AppUserId == userId).ToListAsync();
+
+
+            foreach (var basketItem in basketItemList)
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-                if (userId is null)
-                    return BadRequest();
-
-                var basketItems2 = await _context.BasketIems.Include(x => x.Product).ThenInclude(x => x.ProductImages).Where(x => x.AppUserId == userId).ToListAsync();
-
-
-                foreach (var basketIem in basketItems2)
-                {
-                    GetBasketViewModel vm = new()
-                    {
-                        Id = basketIem.Id,
-                        Count = basketIem.Count,
-                        Price = basketIem.Product.Price,
-                        ImagePath = basketIem.Product.ProductImages?.FirstOrDefault()?.ImageUrl ?? "",
-                        Name = basketIem.Product.Name,
-                        ProductId = basketIem.ProductId,
-                    };
-
-                    basket.Add(vm);
-                }
-
-
-                return View(basket);
-
-            }
-
-
-            List<BasketItemViewModel> basketItems = new();
-
-            var json = Request.Cookies[BASKET_KEY];
-
-
-            if (!string.IsNullOrEmpty(json))
-                basketItems = JsonConvert.DeserializeObject<List<BasketItemViewModel>>(json) ?? new();
-
-            foreach (var basketIem in basketItems)
-            {
-
-                var product = await _productService.GetAsync(basketIem.ProductId);
-
-                if (product is null)
-                    continue;
-
                 GetBasketViewModel vm = new()
                 {
-                    Count = basketIem.Count,
-                    Price = product.Price,
-                    ImagePath = product.ProductImages?.FirstOrDefault()?.ImageUrl ?? "",
-                    Name = product.Name,
-                    ProductId = product.Id
+                    Id = basketItem.Id,
+                    Count = basketItem.Count,
+                    Price = basketItem.Product.Price,
+                    ImagePath = basketItem.Product.ProductImages?.FirstOrDefault()?.ImageUrl ?? "",
+                    Name = basketItem.Product.Name,
+                    ProductId = basketItem.ProductId,
                 };
 
                 basket.Add(vm);
@@ -242,6 +184,53 @@ namespace Ogani.MVC.Controllers
 
 
             return View(basket);
+
         }
+
+
+        List<BasketItemViewModel> basketItems = _getBasketFromCookie();
+
+        foreach (var basketIem in basketItems)
+        {
+
+            var product = await _productService.GetAsync(basketIem.ProductId);
+
+            if (product is null)
+                continue;
+
+            GetBasketViewModel vm = new()
+            {
+                Count = basketIem.Count,
+                Price = product.Price,
+                ImagePath = product.ProductImages?.FirstOrDefault()?.ImageUrl ?? "",
+                Name = product.Name,
+                ProductId = product.Id
+            };
+
+            basket.Add(vm);
+        }
+
+
+        return View(basket);
     }
+
+
+    private void _appendBasketInCookie(List<BasketItemViewModel> basket)
+    {
+        var newJson = JsonConvert.SerializeObject(basket);
+
+        Response.Cookies.Append(BASKET_KEY, newJson);
+    }
+
+    private List<BasketItemViewModel> _getBasketFromCookie()
+    {
+        string? json = Request.Cookies[BASKET_KEY];
+
+        List<BasketItemViewModel> basket = new();
+
+        if (!string.IsNullOrEmpty(json))
+            basket = JsonConvert.DeserializeObject<List<BasketItemViewModel>>(json!) ?? new();
+        return basket;
+    }
+
 }

@@ -12,7 +12,7 @@ using Ogani.DAL.DataContext;
 namespace Ogani.DAL.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241021163950_AddedBasketItems")]
+    [Migration("20241022084054_AddedBasketItems")]
     partial class AddedBasketItems
     {
         /// <inheritdoc />
@@ -223,7 +223,7 @@ namespace Ogani.DAL.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Ogani.DAL.DataContext.Entities.BasketIem", b =>
+            modelBuilder.Entity("Ogani.DAL.DataContext.Entities.BasketItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -247,7 +247,7 @@ namespace Ogani.DAL.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("BasketIems");
+                    b.ToTable("BasketItems");
                 });
 
             modelBuilder.Entity("Ogani.DAL.DataContext.Entities.Category", b =>
@@ -399,7 +399,7 @@ namespace Ogani.DAL.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Ogani.DAL.DataContext.Entities.BasketIem", b =>
+            modelBuilder.Entity("Ogani.DAL.DataContext.Entities.BasketItem", b =>
                 {
                     b.HasOne("Ogani.DAL.DataContext.Entities.AppUser", "AppUser")
                         .WithMany()
